@@ -1,7 +1,20 @@
-var context, form;
+var ajaxUrl, datatableApi, updateTable, form;
 
-function makeEditable(ctx) {
-    context = ctx;
+function makeEditable(aUrl, datatableOpts, upTable) {
+    ajaxUrl = aUrl;
+    datatableApi = $("#datatable").DataTable(
+        // https://api.jquery.com/jquery.extend/#jQuery-extend-deep-target-object1-objectN
+        $.extend(true, datatableOpts,
+            {
+                "ajax": {
+                    "url": ajaxUrl,
+                    "dataSrc": ""
+                },
+                "paging": false,
+                "info": true
+            }
+        ));
+    updateTable = upTable;
     form = $('#detailsForm');
     $(document).ajaxError(function (event, jqXHR, options, jsExc) {
         failNoty(jqXHR);
@@ -19,38 +32,44 @@ function add() {
 
 function updateRow(id) {
     $("#modalTitle").html(i18n["editTitle"]);
-    $.get(context.ajaxUrl + id, function (data) {
+    $.get(ajaxUrl + id, function (data) {
         $.each(data, function (key, value) {
-            form.find("input[name='" + key + "']").val(value);
+            form.find("input[name='" + key + "']").val(
+                key === "dateTime" ? formatDate(value) : value
+            );
         });
         $('#editRow').modal();
     });
 }
 
+function formatDate(date) {
+    return date.replace('T', ' ').substr(0, 16);
+}
+
 function deleteRow(id) {
     if (confirm(i18n['common.confirm'])) {
         $.ajax({
-            url: context.ajaxUrl + id,
+            url: ajaxUrl + id,
             type: "DELETE"
         }).done(function () {
-            context.updateTable();
+            updateTable();
             successNoty("common.deleted");
         });
     }
 }
 
 function updateTableByData(data) {
-    context.datatableApi.clear().rows.add(data).draw();
+    datatableApi.clear().rows.add(data).draw();
 }
 
 function save() {
     $.ajax({
         type: "POST",
-        url: context.ajaxUrl,
+        url: ajaxUrl,
         data: form.serialize()
     }).done(function () {
         $("#editRow").modal("hide");
-        context.updateTable();
+        updateTable();
         successNoty("common.saved");
     });
 }
